@@ -22,23 +22,6 @@ EIS is a FastAPI-based application that provides real-time predictions for proce
 - Python 3.13+
 - pip (Python package manager)
 
-### Setup
-
-1. Clone the repository:
-```bash
-git clone https://git01lab.cs.univie.ac.at/adlerb88/eis.git
-cd eis-main
-```
-
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-3. Navigate to the source directory:
-```bash
-cd src
-```
 
 ## Usage
 
