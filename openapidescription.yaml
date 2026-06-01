@@ -1,0 +1,92 @@
+openapi: 3.0.0
+info:
+  title: Backend API for the predictive monitoring microservice
+  version: 0.0.1
+
+security:
+  - bearerAuth: []
+  
+paths:
+  /predictions:
+    get:
+      summary: Get prediction tasks
+      description: Get a list of possible tasks to be predicted 
+      operationId: getTasks
+
+      responses:
+        '200':
+          description: List of tasks successfully retrieved
+          content: 
+            application/json:
+              schema: 
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        
+  /predictions/{caseId}:
+    get:
+      summary: Get a specific prediction of a case
+      description: Get the specific details of a prediction about a case that was made
+      operationId: getCaseDetails
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+      responses:
+        '200':
+          description: Case found, returning details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Case'        
+                
+
+  /predictions/{task}:
+    post:
+      summary: Post a new prediction for the microservice to answer
+
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    CaseId:
+      name: caseId
+      in: path
+      required: true
+      description: ID of the meeting
+      schema:
+          type: integer
+          format: int32
+          maximum: 100
+
+  schemas:
+    Case:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+          format: int32
+          maximum: 100
+        title:
+          type: string
+          maxLength: 100
+        responses:
+          type: array
+          maxItems: 100
+          items: 
+            $ref: '#/components/schemas/Response'
+
+    Response:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+          format: int32
+        responseData:
+          type: string
