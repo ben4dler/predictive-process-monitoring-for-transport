@@ -1,92 +1,193 @@
 openapi: 3.0.0
 info:
-  title: Backend API for the predictive monitoring microservice
-  version: 0.0.1
+  title: EIS - Predictive Process Monitoring Microservice
+  description: A machine learning-powered API for predicting remaining time and next activities in business processes
+  version: 1.0.0
+  contact:
+    name: Benedikt Adler
+  license:
+    name: University of Vienna
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
 
 security:
   - bearerAuth: []
-  
-paths:
-  /predictions:
-    get:
-      summary: Get prediction tasks
-      description: Get a list of possible tasks to be predicted 
-      operationId: getTasks
 
-      responses:
-        '200':
-          description: List of tasks successfully retrieved
-          content: 
-            application/json:
-              schema: 
-                type: array
-                items:
-                  $ref: '#/components/schemas/Task'
-        
-  /predictions/{caseId}:
+paths:
+  /health:
     get:
-      summary: Get a specific prediction of a case
-      description: Get the specific details of a prediction about a case that was made
-      operationId: getCaseDetails
-      parameters:
-        - $ref: '#/components/parameters/CaseId'
+      summary: Health check endpoint
+      description: Verify that the server is running and healthy
+      operationId: healthCheck
+      security: []
       responses:
         '200':
-          description: Case found, returning details
+          description: Server is healthy
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Case'        
-                
+                $ref: '#/components/schemas/HealthResponse'
 
-  /predictions/{task}:
+  /predict/remaining-time:
     post:
-      summary: Post a new prediction for the microservice to answer
+      summary: Predict remaining time
+      description: Forecast how long a process case will take to complete using XGBoost model
+      operationId: predictRemainingTime
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PredictionRequest'
+      responses:
+        '200':
+          description: Remaining time prediction successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictionResponse'
+        '400':
+          description: Invalid request format
+        '422':
+          description: Validation error
 
+  /predict/next_activity:
+    post:
+      summary: Predict next activity
+      description: Predict the next activity in a process using LSTM neural network
+      operationId: predictNextActivity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PredictionRequest'
+      responses:
+        '200':
+          description: Next activity prediction successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictionResponse'
+        '400':
+          description: Invalid request format
+        '422':
+          description: Validation error
+
+  /predict/all:
+    post:
+      summary: Get all predictions
+      description: Get combined predictions for remaining time and next activity
+      operationId: predictAll
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PredictionRequest'
+      responses:
+        '200':
+          description: All predictions successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllPredictionsResponse'
+        '400':
+          description: Invalid request format
+        '422':
+          description: Validation error
 
 components:
-
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-
-  parameters:
-    CaseId:
-      name: caseId
-      in: path
-      required: true
-      description: ID of the meeting
-      schema:
-          type: integer
-          format: int32
-          maximum: 100
+      description: JWT Bearer token for API authentication
 
   schemas:
-    Case:
+    HealthResponse:
       type: object
-      additionalProperties: false
+      required:
+        - status
       properties:
-        id:
-          type: integer
-          format: int32
-          maximum: 100
-        title:
+        status:
           type: string
-          maxLength: 100
-        responses:
-          type: array
-          maxItems: 100
-          items: 
-            $ref: '#/components/schemas/Response'
+          enum:
+            - healthy
+          example: healthy
 
-    Response:
+    PredictionRequest:
       type: object
+      required:
+        - case_id
+        - prefix
       additionalProperties: false
       properties:
-        id:
-          type: integer
-          format: int32
-        responseData:
+        case_id:
           type: string
+          description: Unique identifier for the process case
+          example: case_123
+        prefix:
+          type: array
+          description: Array of activity names representing the process history
+          items:
+            type: string
+          example:
+            - activity_1
+            - activity_2
+            - activity_3
+
+    PredictionResponse:
+      type: object
+      required:
+        - prediction
+        - confidence
+        - timestamp
+      properties:
+        prediction:
+          oneOf:
+            - type: number
+              description: Predicted remaining time in hours
+            - type: string
+              description: Predicted next activity name
+        confidence:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 1
+          description: Confidence score of the prediction
+          example: 0.95
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 formatted timestamp of prediction
+          example: 2026-06-01T12:30:00Z
+
+    AllPredictionsResponse:
+      type: object
+      required:
+        - remaining_time
+        - next_activity
+        - timestamp
+      properties:
+        remaining_time:
+          $ref: '#/components/schemas/PredictionResponse'
+        next_activity:
+          $ref: '#/components/schemas/PredictionResponse'
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 formatted timestamp when all predictions were made
+          example: 2026-06-01T12:30:00Z
+
+    Error:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Error message describing what went wrong
